@@ -1,16 +1,31 @@
 import tkinter as tk
 from tensorflow import keras
+import pickle
 
-# Load the pre-trained models
-langId = keras.models.load_model('path/to/your/model.h5')
-fasttextModel = keras.models.load_model('path/to/your/model.h5')
-spacyModel = keras.models.load_model('path/to/your/model.h5')
-svmModel = keras.models.load_model('path/to/your/model.h5')
-RandomForestModel = keras.models.load_model('path/to/your/model.h5')
-knnModel = keras.models.load_model('path/to/your/model.h5')
+# Load th5
+# langId = keras.models.load_model('path/to/your/model.h5')
+# fasttextModel = keras.models.load_model('path/to/your/model.h5')
+# spacyModel = keras.models.load_model('path/to/your/model.h5')
+# svmModel = keras.models.load_model('path/to/your/model.h5')
+# RandomForestModel = keras.models.load_model('path/to/your/model.h5')
+# knnModel = keras.models.load_model('path/to/your/model.h5')
+
+#Load Pickle Files
+with open('models/model.pkl', 'rb') as f1:
+    langId = pickle.load(f1)
+with open('models/model.pkl', 'rb') as f2:
+    fasttextModel = pickle.load(f2)
+with open('models/model.pkl', 'rb') as f3:
+    spacyModel = pickle.load(f3)
+with open('models/model.pkl', 'rb') as f4:
+    svmModel = pickle.load(f4)
+with open('models/model.pkl', 'rb') as f5:
+    RandomForestModel = pickle.load(f5)
+with open('models/model.pkl', 'rb') as f6:
+    knnModel = pickle.load(f6)
 
 # Create a dictionary to map language names to models
-models = {'langId': langId, 'fasttextModel': fasttextModel, 'spacy': spacyModel, 'SVM': svmModel, 'RandomForestModel':RandomForestModel,'knnModel':knnModel}
+models = {'Lang ID': langId, 'Fast Text': fasttextModel, 'Spacy': spacyModel, 'SVM': svmModel, 'Random Forest':RandomForestModel,'KNN':knnModel}
 
 # Define the function to detect the language
 def detect_language():
@@ -23,17 +38,17 @@ def detect_language():
     print(f'Received Text is : {text} and the Chosen Model is : {model}')
     if text:
         try:
-            if selected_model == 'langId':
+            if selected_model == 'Lang ID':
                 prediction = langId.predict(text)
-            elif selected_model == 'fasttextModel':
+            elif selected_model == 'Fast Text':
                 prediction = fasttextModel.predict(text)
-            elif selected_model == 'spacy':
+            elif selected_model == 'Spacy':
                 prediction = spacyModel.predict(text)
             elif selected_model == 'SVM':
                 prediction = svmModel.predict(text)
-            elif selected_model == 'RandomForestModel':
+            elif selected_model == 'Random Forest':
                 prediction = RandomForestModel.predict(text)
-            elif selected_model == 'knnModel':
+            elif selected_model == 'KNN':
                 prediction = knnModel.predict(text)
             else:
                 prediction = 'Model Not Found'
