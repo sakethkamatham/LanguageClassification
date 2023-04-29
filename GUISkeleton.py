@@ -1,16 +1,16 @@
 import tkinter as tk
 from tensorflow import keras
 
-# # Load the pre-trained models
-# langId = keras.models.load_model('path/to/your/model.h5')
-# fasttextModel = keras.models.load_model('path/to/your/model.h5')
-# spacyModel = keras.models.load_model('path/to/your/model.h5')
-# svmModel = keras.models.load_model('path/to/your/model.h5')
-# RandomForestModel = keras.models.load_model('path/to/your/model.h5')
-# knnModel = keras.models.load_model('path/to/your/model.h5')
+# Load the pre-trained models
+langId = keras.models.load_model('path/to/your/model.h5')
+fasttextModel = keras.models.load_model('path/to/your/model.h5')
+spacyModel = keras.models.load_model('path/to/your/model.h5')
+svmModel = keras.models.load_model('path/to/your/model.h5')
+RandomForestModel = keras.models.load_model('path/to/your/model.h5')
+knnModel = keras.models.load_model('path/to/your/model.h5')
 
-# # Create a dictionary to map language names to models
-# models = {'langId': langId, 'fasttextModel': fasttextModel, 'Spanish': spacyModel, 'German': svmModel, 'RandomForestModel':RandomForestModel,'knnModel':knnModel}
+# Create a dictionary to map language names to models
+models = {'langId': langId, 'fasttextModel': fasttextModel, 'spacy': spacyModel, 'SVM': svmModel, 'RandomForestModel':RandomForestModel,'knnModel':knnModel}
 
 
 
@@ -23,14 +23,28 @@ def detect_language():
     # Remove any leading/trailing spaces
     text = text.strip()
     # If the text is not empty
+    selected_model = tk.StringVar(value=models[0])
+    print(f'Received Text is : {text} and the Chosen Model is : {selected_model}')
     if text:
         try:
-            # Detect the language
-            language = detect(text)
-            # Update the output box with the detected language
+            if selected_model == 'langId':
+                prediction = langId.predict(text)
+            elif selected_model == 'fasttextModel':
+                prediction = fasttextModel.predict(text)
+            elif selected_model == 'spacy':
+                prediction = spacyModel.predict(text)
+            elif selected_model == 'SVM':
+                prediction = svmModel.predict(text)
+            elif selected_model == 'RandomForestModel':
+                prediction = RandomForestModel.predict(text)
+            elif selected_model == 'knnModel':
+                prediction = knnModel.predict(text)
+            else:
+                prediction = 'Model Not Found'
+
             output_box.configure(state='normal')
             output_box.delete('1.0', 'end')
-            output_box.insert('1.0', language)
+            output_box.insert('1.0', prediction)
             output_box.configure(state='disabled')
         except:
             # If an error occurred, update the output box with an error message
