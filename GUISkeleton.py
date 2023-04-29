@@ -12,10 +12,6 @@ knnModel = keras.models.load_model('path/to/your/model.h5')
 # Create a dictionary to map language names to models
 models = {'langId': langId, 'fasttextModel': fasttextModel, 'spacy': spacyModel, 'SVM': svmModel, 'RandomForestModel':RandomForestModel,'knnModel':knnModel}
 
-
-
-# Doc.set_extension('language', default='UNK')
-
 # Define the function to detect the language
 def detect_language():
    # Get the text from the input box
@@ -23,8 +19,8 @@ def detect_language():
     # Remove any leading/trailing spaces
     text = text.strip()
     # If the text is not empty
-    selected_model = tk.StringVar(value=models[0])
-    print(f'Received Text is : {text} and the Chosen Model is : {selected_model}')
+    model = selected_model.get()
+    print(f'Received Text is : {text} and the Chosen Model is : {model}')
     if text:
         try:
             if selected_model == 'langId':
@@ -58,27 +54,26 @@ def detect_language():
 root = tk.Tk()
 root.title('Language Detection')
 
-selected_model = tk.StringVar(root)
-selected_model.set(models[0]) 
-
-model_dropdown = tk.OptionMenu(root, selected_model, *models[0])
-model_dropdown.pack()
-
 root.geometry('1000x1000')
 root.eval('tk::PlaceWindow . center')
 
 # Create the header and pack it
-header_label = tk.Label(root, text='Language Detection Interface', font=('Arial', 45, 'bold'), pady=10)
-header_label.pack()
+header_label = tk.Label(root, text='Language Classification Interface', font=('Arial', 45, 'bold'), pady=10)
+header_label.pack(pady=40)
 
 # Create the input box
-input_box = tk.Text(root, height=5, width=50, font=('Helvetica', 14))
+input_box = tk.Text(root, height=5, width=50, font=('Helvetica', 30))
 input_box.pack(padx=10, pady=10)
+
+selected_model = tk.StringVar(root)
+language_dropdown = tk.OptionMenu(root, selected_model, *models)
+language_dropdown.pack()
+language_dropdown.pack(pady=40)
 
 
 # Create the button to detect the language
 button = tk.Button(root, text='Detect Language', command=detect_language, bg='white', fg='Black')
-button.pack(pady=10)
+button.pack(pady=40)
 
 # Create the output box
 output_box = tk.Text(root, height=5, width=50, state='disabled', font=('Helvetica', 30))
