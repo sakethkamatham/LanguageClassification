@@ -1,31 +1,26 @@
 import tkinter as tk
 from tensorflow import keras
 import pickle
+import lzma
 
-# Load th5
-# langId = keras.models.load_model('path/to/your/model.h5')
-# fasttextModel = keras.models.load_model('path/to/your/model.h5')
-# spacyModel = keras.models.load_model('path/to/your/model.h5')
-# svmModel = keras.models.load_model('path/to/your/model.h5')
-# RandomForestModel = keras.models.load_model('path/to/your/model.h5')
-# knnModel = keras.models.load_model('path/to/your/model.h5')
 
 #Load Pickle Files
-with open('models/model.pkl', 'rb') as f1:
+with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/langId.pkl', 'rb') as f1:
     langId = pickle.load(f1)
-with open('models/model.pkl', 'rb') as f2:
+with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/fasttext.pkl', 'rb') as f2:
     fasttextModel = pickle.load(f2)
-with open('models/model.pkl', 'rb') as f3:
-    spacyModel = pickle.load(f3)
-with open('models/model.pkl', 'rb') as f4:
+# with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/spacy.pkl', 'rb') as f3:
+#     spacyModel = pickle.load(f3)
+with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/SvmDv.pkl', 'rb') as f4:
     svmModel = pickle.load(f4)
-with open('models/model.pkl', 'rb') as f5:
+with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/RfDv.pkl', 'rb') as f5:
     RandomForestModel = pickle.load(f5)
-with open('models/model.pkl', 'rb') as f6:
+with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/KnnDv.pkl', 'rb') as f6:
     knnModel = pickle.load(f6)
 
+
 # Create a dictionary to map language names to models
-models = {'Lang ID': langId, 'Fast Text': fasttextModel, 'Spacy': spacyModel, 'SVM': svmModel, 'Random Forest':RandomForestModel,'KNN':knnModel}
+models = {'LangID': langId, 'Fast Text': fasttextModel,'SVM': svmModel, 'Random Forest':RandomForestModel,'KNN':knnModel}
 
 # Define the function to detect the language
 def detect_language():
@@ -35,23 +30,30 @@ def detect_language():
     text = text.strip()
     # If the text is not empty
     model = selected_model.get()
+
+    lang = "Fast Text"
+
     print(f'Received Text is : {text} and the Chosen Model is : {model}')
+
+    print(f'Moodel Type : {type(langId)}')
+
+    predictiona= langId.predict(text)
+    print(f'Prediction is  {predictiona}')
     if text:
         try:
-            if selected_model == 'Lang ID':
+            if model == lang:
+                print('inside lang model')
                 prediction = langId.predict(text)
-            elif selected_model == 'Fast Text':
+            elif model == lang:
                 prediction = fasttextModel.predict(text)
-            elif selected_model == 'Spacy':
-                prediction = spacyModel.predict(text)
-            elif selected_model == 'SVM':
+            elif model == 'SVM':
                 prediction = svmModel.predict(text)
-            elif selected_model == 'Random Forest':
+            elif model == 'Random Forest':
                 prediction = RandomForestModel.predict(text)
-            elif selected_model == 'KNN':
+            elif model == 'KNN':
                 prediction = knnModel.predict(text)
             else:
-                prediction = 'Model Not Found'
+                prediction = "Model Not found"
 
             output_box.configure(state='normal')
             output_box.delete('1.0', 'end')
