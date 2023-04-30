@@ -1,31 +1,66 @@
 import tkinter as tk
-from tensorflow import keras
 import pickle
+import spacy
+from sklearn.feature_extraction.text import CountVectorizer
+import pandas as pd
+import numpy as np
+from py3langid.langid import LanguageIdentifier, MODEL_FILE
+import fasttext
 
-# Load th5
-# langId = keras.models.load_model('path/to/your/model.h5')
-# fasttextModel = keras.models.load_model('path/to/your/model.h5')
-# spacyModel = keras.models.load_model('path/to/your/model.h5')
-# svmModel = keras.models.load_model('path/to/your/model.h5')
-# RandomForestModel = keras.models.load_model('path/to/your/model.h5')
-# knnModel = keras.models.load_model('path/to/your/model.h5')
 
-#Load Pickle Files
-with open('models/model.pkl', 'rb') as f1:
-    langId = pickle.load(f1)
-with open('models/model.pkl', 'rb') as f2:
-    fasttextModel = pickle.load(f2)
-with open('models/model.pkl', 'rb') as f3:
-    spacyModel = pickle.load(f3)
-with open('models/model.pkl', 'rb') as f4:
-    svmModel = pickle.load(f4)
-with open('models/model.pkl', 'rb') as f5:
-    RandomForestModel = pickle.load(f5)
-with open('models/model.pkl', 'rb') as f6:
-    knnModel = pickle.load(f6)
+
+LANGID='LangID'
+FASTTXT = 'Fast Text'
+SPACY = 'Spacy'
+SVM = 'SVM'
+RF = 'Random Forest'
+KNN = 'KNN'
+
+
+nlp = spacy.load("en_core_web_sm")
+
+from spacy.lang.en.stop_words import STOP_WORDS
+stopwords = list(STOP_WORDS)
+
+import string
+punct = string.punctuation
+
+def preprocess(sentence):
+  doc = nlp(sentence)
+  tokens = []
+  for token in doc:
+    if token.lemma_ != '-PRON-':
+      temp = token.lemma_.lower().strip()
+    else:
+      temp = token.lower_
+    tokens.append(temp)
+  clean_tokens = []
+  for token in tokens:
+    if token not in punct and token not in stopwords:
+      clean_tokens.append(token)
+  return clean_tokens
+
+# Load Pickle Files
+try:
+    
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/langId_1_1.pkl', 'rb') as f1:
+        langId = pickle.load(f1)
+    fasttextModel = fasttext.load_model('lid.176.bin')
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/spacy.pkl', 'rb') as f3:
+        spacyModel = pickle.load(f3)
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/SvmDv.pkl', 'rb') as f4:
+        svmModel = pickle.load(f4)
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/RfDv.pkl', 'rb') as f5:
+        RandomForestModel = pickle.load(f5)
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/knntest.joblib', 'rb') as f6:
+        knnModel = pickle.load(f6)
+except Exception as e:
+    print(f'File Loading Exception is {e}')
+
+
 
 # Create a dictionary to map language names to models
-models = {'Lang ID': langId, 'Fast Text': fasttextModel, 'Spacy': spacyModel, 'SVM': svmModel, 'Random Forest':RandomForestModel,'KNN':knnModel}
+models = {'LangID': langId ,'Fast Text': fasttextModel,'SVM': svmModel, 'Random Forest':RandomForestModel,'KNN':knnModel, 'Spacy' : spacyModel}
 
 # Define the function to detect the language
 def detect_language():
@@ -35,34 +70,91 @@ def detect_language():
     text = text.strip()
     # If the text is not empty
     model = selected_model.get()
-    print(f'Received Text is : {text} and the Chosen Model is : {model}')
+
+    print(f'The Text Received is {text} AND the model selected is {model}')
     if text:
         try:
-            if selected_model == 'Lang ID':
-                prediction = langId.predict(text)
-            elif selected_model == 'Fast Text':
-                prediction = fasttextModel.predict(text)
-            elif selected_model == 'Spacy':
-                prediction = spacyModel.predict(text)
-            elif selected_model == 'SVM':
-                prediction = svmModel.predict(text)
-            elif selected_model == 'Random Forest':
+            if model == LANGID:
+                d = {'Text': [text]}
+                df = pd.DataFrame(d)
+                langIdModel = LanguageIdentifier.from_pickled_model(langId, norm_probs=True)
+                prediction = langIdModel.classify(df.iloc[0].Text)[0]
+            elif model == FASTTXT:
+                prediction = fasttextModel.predict(text)[0][0].split('__')[-1]
+            elif model == SVM:
+                vectorizer = CountVectorizer()
+                X = vectorizer.fit_transform([text])
+                prediction = svmModel.predict(X)
+            elif model == RF:
                 prediction = RandomForestModel.predict(text)
-            elif selected_model == 'KNN':
+            elif model == SPACY:
+                d = np.array([text])
+                prediction = spacyModel.predict(d)
+                print(f'Language is {prediction}')
+            elif model == KNN:
                 prediction = knnModel.predict(text)
             else:
-                prediction = 'Model Not Found'
+                prediction = "Model Not found"
 
+            print(f'Language is {prediction}')
+         
             output_box.configure(state='normal')
             output_box.delete('1.0', 'end')
-            output_box.insert('1.0', prediction)
+            output_box.insert('1.0', prediction_translator(prediction))
             output_box.configure(state='disabled')
-        except:
+        except Exception as e:
             # If an error occurred, update the output box with an error message
             output_box.configure(state='normal')
             output_box.delete('1.0', 'end')
             output_box.insert('1.0', 'Error: Could not detect language')
             output_box.configure(state='disabled')
+            print(f'Exception is {e}')
+
+placeholder1 = 'Text is in '
+placeholder2 = '- Most Spoken Country/ies : '
+
+def prediction_translator(prediction):
+    print(f'Received Prediction Value is {type(prediction)}')
+    if type(prediction) is not str:
+        prediction = prediction[0]
+        print(f'Precessed  is {prediction}')
+
+    if(prediction =='en'):
+        return (f'{placeholder1}English {placeholder2} Around the world')
+    elif(prediction == 'ml'):
+       return (f'{placeholder1}Malayalam {placeholder2} India')
+    elif(prediction == 'hi'):
+        return (f'{placeholder1}Hindi {placeholder2} India')
+    elif(prediction == 'ta'):
+        return (f'{placeholder1}Tamil {placeholder2} India')
+    elif(prediction == 'pt'):
+        return (f'{placeholder1}Portugese {placeholder2} Portugal, Brazil')
+    elif(prediction ==  'fr'):
+        return (f'{placeholder1}French {placeholder2} France')
+    elif(prediction ==  'nl'):
+        return (f'{placeholder1}Dutch {placeholder2} Netherlands')
+    elif(prediction ==  'es'):
+        return (f'{placeholder1}Spanish {placeholder2} Spain (España)')
+    elif(prediction ==  'el'):
+        return (f'{placeholder1}Greek {placeholder2} Greece')
+    elif(prediction == 'ru'):
+        return (f'{placeholder1}Russian {placeholder2} Russia')
+    elif(prediction == 'da'):
+        return (f'{placeholder1}Danish {placeholder2} Denmark')
+    elif(prediction == 'it'):
+        return (f'{placeholder1}Italian {placeholder2} Italy')
+    elif(prediction ==  'tr'):
+        return (f'{placeholder1}Turkish {placeholder2} Turkey')
+    elif(prediction == 'sv'):
+        return (f'{placeholder1}Swedish {placeholder2} Sweden')
+    elif(prediction == 'ar'):
+        return (f'{placeholder1}Arabic {placeholder2} The Middle East')
+    elif(prediction == 'de'):
+        return (f'{placeholder1}German {placeholder2} Germany')
+    elif(prediction == 'kn'):
+        return (f'{placeholder1}Kannada {placeholder2} India')
+    else:
+        return "Sorry ! It looks like this language was not trained by us."
 
             
 # Create the GUI
