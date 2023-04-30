@@ -117,7 +117,7 @@ def prediction_translator(prediction):
     print(f'Received Prediction Value is {type(prediction)}')
     if type(prediction) is not str:
         prediction = prediction[0]
-        print(f'Precessed Pred is {prediction}')
+        print(f'Precessed  is {prediction}')
 
     if(prediction =='en'):
         return (f'{placeholder1}English {placeholder2} Around the world')
