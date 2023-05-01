@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
 import fasttext
+from gensim.models import KeyedVectors
 
 
 
@@ -48,14 +49,29 @@ try:
     fasttextModel = fasttext.load_model('lid.176.bin')
     with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/spacy.pkl', 'rb') as f3:
         spacyModel = pickle.load(f3)
-    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/SvmDv.pkl', 'rb') as f4:
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/SvmGv.pkl', 'rb') as f4:
         svmModel = pickle.load(f4)
-    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/RfDv.pkl', 'rb') as f5:
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/RfGv.pkl', 'rb') as f5:
         RandomForestModel = pickle.load(f5)
-    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/knntest.joblib', 'rb') as f6:
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/KnnGv.pkl', 'rb') as f6:
         knnModel = pickle.load(f6)
 except Exception as e:
     print(f'File Loading Exception is {e}')
+
+glove_model = KeyedVectors.load_word2vec_format('./glove.6B.100d.txt', binary=False, no_header=True)
+
+def get_sentence_embedding(sentence):
+    sentence_embedding = []
+    for word in sentence.split():
+        try:
+            word_embedding = glove_model.get_vector(word)
+            sentence_embedding.append(word_embedding)
+        except KeyError:
+            pass
+    if sentence_embedding:
+        return np.mean(sentence_embedding, axis=0)
+    else:
+        return np.zeros(100)
 
 
 
@@ -71,6 +87,11 @@ def detect_language():
     # If the text is not empty
     model = selected_model.get()
 
+    a = {'Text': [text]}
+    df1 = pd.DataFrame(a)
+    g = [get_sentence_embedding(sentence) for sentence in df1['Text']]
+    g = np.vstack(g)
+
     print(f'The Text Received is {text} AND the model selected is {model}')
     if text:
         try:
@@ -82,17 +103,15 @@ def detect_language():
             elif model == FASTTXT:
                 prediction = fasttextModel.predict(text)[0][0].split('__')[-1]
             elif model == SVM:
-                vectorizer = CountVectorizer()
-                X = vectorizer.fit_transform([text])
-                prediction = svmModel.predict(X)
+                prediction = svmModel.predict(g)
             elif model == RF:
-                prediction = RandomForestModel.predict(text)
+                prediction = RandomForestModel.predict(g)
             elif model == SPACY:
                 d = np.array([text])
                 prediction = spacyModel.predict(d)
                 print(f'Language is {prediction}')
             elif model == KNN:
-                prediction = knnModel.predict(text)
+                prediction = knnModel.predict(g)
             else:
                 prediction = "Model Not found"
 
