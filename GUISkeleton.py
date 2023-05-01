@@ -7,24 +7,41 @@ import numpy as np
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
 import fasttext
 from gensim.models import KeyedVectors
-
+from spacy.lang.en.stop_words import STOP_WORDS
+import string
+import re
+import nltk
+from nltk import word_tokenize, pos_tag
+from nltk.stem import WordNetLemmatizer
+from nltk.stem.snowball import stopwords
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('stopwords')
+nltk.download('wordnet')
+from sklearn.feature_selection import SequentialFeatureSelector
+import re
+import nltk
+from nltk import word_tokenize, pos_tag
+from nltk.stem import WordNetLemmatizer
+from nltk.stem.snowball import stopwords
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('stopwords')
+nltk.download('wordnet')
+from sklearn.feature_selection import SequentialFeatureSelector
 
 
 LANGID='LangID'
 FASTTXT = 'Fast Text'
 SPACY = 'Spacy'
-SVM = 'SVM'
-RF = 'Random Forest'
-KNN = 'KNN'
+SVMGV = 'SVM - GloVe'
+RFGV = 'Random Forest - GloVe'
+RFEXTRACT = 'Random Forest - With Feature Extraction'
+KNNGV = 'KNN - GloVe'
+KNNEXTRACT = 'KNN - With Feature Extraction'
+SVMEXTRACT = 'SVM - With Feature Extraction'
 
 
-nlp = spacy.load("en_core_web_sm")
-
-from spacy.lang.en.stop_words import STOP_WORDS
-stopwords = list(STOP_WORDS)
-
-import string
-punct = string.punctuation
 
 def preprocess(sentence):
   doc = nlp(sentence)
@@ -37,11 +54,10 @@ def preprocess(sentence):
     tokens.append(temp)
   clean_tokens = []
   for token in tokens:
-    if token not in punct and token not in stopwords:
+    if token not in punct and token not in stopwords1:
       clean_tokens.append(token)
   return clean_tokens
 
-# Load Pickle Files
 try:
     
     with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/langId_1_1.pkl', 'rb') as f1:
@@ -50,15 +66,30 @@ try:
     with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/spacy.pkl', 'rb') as f3:
         spacyModel = pickle.load(f3)
     with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/SvmGv.pkl', 'rb') as f4:
-        svmModel = pickle.load(f4)
+        svmModelgv = pickle.load(f4)
     with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/RfGv.pkl', 'rb') as f5:
-        RandomForestModel = pickle.load(f5)
+        RandomForestModelgv = pickle.load(f5)
     with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/KnnGv.pkl', 'rb') as f6:
-        knnModel = pickle.load(f6)
+        knnModelgv = pickle.load(f6)
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/KnnExtract.pkl', 'rb') as f7:
+        knnModelex = pickle.load(f7)
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/SvmExtract.pkl', 'rb') as f8:
+        svmModelex = pickle.load(f8)
+    with open('/Users/saketh/Desktop/LanguageClassification/LanguageClassification/Models/RfExtract.pkl', 'rb') as f9:
+        RandomForestModelex = pickle.load(f9)
 except Exception as e:
     print(f'File Loading Exception is {e}')
 
 glove_model = KeyedVectors.load_word2vec_format('./glove.6B.100d.txt', binary=False, no_header=True)
+
+
+
+
+nlp = spacy.load("en_core_web_sm")
+stopwords1 = list(STOP_WORDS)
+punct = string.punctuation
+
+
 
 def get_sentence_embedding(sentence):
     sentence_embedding = []
@@ -72,11 +103,100 @@ def get_sentence_embedding(sentence):
         return np.mean(sentence_embedding, axis=0)
     else:
         return np.zeros(100)
+    
+def avgWordLength(x):
+    avgWordLength = [w for w in re.split('\.|!|\?| ',x)]    #split a review into a list of words
+    avgWordLength = list(filter(lambda x : x != '', avgWordLength))    #remove any empty elements in the list
+    avgWordLength = np.mean([len(w) for w in avgWordLength])    #find the average of the lengths of all words in the review
+    return avgWordLength
+
+def avgSentLength(x):
+    avgSentLength = [w for w in re.split('\.|!|\?',x)]    #split a review into a list of sentences
+    avgSentLength = list(filter(lambda x : x != '', avgSentLength))    #remove any empty elements in the list
+    avgSentLength = np.mean([len(w) for w in avgSentLength])    #find the average of the lengths of all words in the review
+    return avgSentLength
+
+def numWords(x):
+    numWords = [w for w in re.split('\.|!|\?| ', x)]    #split a review into a list of words
+    numWords = list(filter(lambda x : x != '', numWords))    #remove any empty elements in the list
+    numWords = len(numWords)    #count the number of words in the review
+    return numWords
+
+def numVerbs(x):
+    numVerbs = sum(1 for word, pos in pos_tag(word_tokenize(x)) if pos.startswith('VB') or pos.startswith('VBD') or pos.startswith('VBG') or pos.startswith('VBN')  or pos.startswith('VBP')  or pos.startswith('VBZ'))
+    return numVerbs
+
+def numAdj(x):
+    numAdj = sum(1 for word, pos in pos_tag(word_tokenize(x)) if pos.startswith('JJ') or pos.startswith('JJR') or pos.startswith('JJS'))
+    return numAdj
+
+def numNou(x):
+    numNou = sum(1 for word, pos in pos_tag(word_tokenize(x)) if pos.startswith('NN') or pos.startswith('NNP') or pos.startswith('NNS'))
+    return numNou
+
+def languagesToListP(x):
+    lang = [s for s in re.split('\.|!|\?',x)]    #split a review into a list of sentences
+    lang = list(filter(lambda x : x != '', lang))    #remove any empty elements in the list
+    return lang
+
+def checkForPassive(s):   
+    doc = nlp(s)    #document the sentence based on spacy nlp
+    entityTags = [word.dep_ for word in doc]    #get the tags for all words in the sentence
+    passive = any(['nsubjpass' in tag for tag in entityTags])    #get whether any words are tagged as passive
+    return passive
+
+def checkOneReviewP(r):
+  numPassive = 0
+  for sentence in r:    #for each sentence in a review:
+    passive = checkForPassive(str(sentence))    #use the checkForPassive method to get the number of words 
+    if(passive):
+      numPassive = numPassive + 1;    #if a sentence is flagged as passive, increment the number of passive sentences found for the review
+  return numPassive
+
+def languagesToListA(x):
+    lang = [s for s in re.split('\.|!|\?',x)]    #split a review into a list of sentences
+    lang = list(filter(lambda x : x != '', lang))    #remove any empty elements in the list
+    return lang
+
+def checkForActive(s):   
+    doc = nlp(s)    #document the sentence based on spacy nlp
+    entityTags = [word.dep_ for word in doc]    #get the tags for all words in the sentence
+    active = any(['nsubj' in tag for tag in entityTags])    #get whether any words are tagged as active
+    return active
+
+def checkOneReviewA(r):
+  numActive = 0
+  for sentence in r:    #for each sentence in a review:
+    active = checkForActive(str(sentence))    #use the checkForActive method to get the number of words 
+    if(active):
+      numActive = numActive + 1;    #if a sentence is flagged as active, increment the number of active sentences found for the review
+  return numActive
+
+def removePunctAndStopWords(x): 
+  words = re.sub('[\.!\?]', '', x)    #remove periods, exclamation points, and question marks from the review
+  words = [w for w in re.split(' ', words)]    #split a review into a list of words
+  words = list(filter(lambda x : x != '', words))    #remove any empty elements in the list
+  words = [w for w in words if w not in stopwords.words('english')]    #remove words that are stopwords based on nltk stopwords
+  return words
+
+def contentDiversity(x):
+  n = len(x)    #n = number of tokens/words in a review
+  v = 0         #v = number of unique tokens/words in a review
+  uniqueWords = []    #list of unique words in a review
+  for w in x:
+    if w not in uniqueWords:    #if a word is not in the uniqueWords, add it to the list and increment v
+      v = v + 1
+      uniqueWords.append(w)
+  try:    
+    return v / n    #return v divided by n
+  except ZeroDivisionError:
+    return 0
+
 
 
 
 # Create a dictionary to map language names to models
-models = {'LangID': langId ,'Fast Text': fasttextModel,'SVM': svmModel, 'Random Forest':RandomForestModel,'KNN':knnModel, 'Spacy' : spacyModel}
+models = {LANGID: langId ,FASTTXT: fasttextModel,SVMGV: svmModelgv,SVMEXTRACT: svmModelex, RFGV:RandomForestModelgv,KNNGV:knnModelgv,KNNEXTRACT: knnModelex, SPACY : spacyModel,RFEXTRACT:RandomForestModelex}
 
 # Define the function to detect the language
 def detect_language():
@@ -92,6 +212,45 @@ def detect_language():
     g = [get_sentence_embedding(sentence) for sentence in df1['Text']]
     g = np.vstack(g)
 
+
+    new_col=['AWL','ASL','NWO','NVB','NAJ','NNO','NPV','NAV','NST','TLN','CDV']
+    language=df1.reindex(columns=[*df1.columns.tolist(), *new_col], fill_value=0)
+
+    language['AWL']=language['Text'].apply(avgWordLength)
+    language['ASL']=language['Text'].apply(avgSentLength)
+    language['NWO'] = language['Text'].apply(numWords)
+    language['NVB'] = language["Text"].apply(numVerbs)
+    language['NAJ'] = language["Text"].apply(numAdj)
+    language['NNO'] = language["Text"].apply(numNou)
+    langList = language["Text"].apply(languagesToListP)
+
+    finalNumPassive = []
+
+    for entry in langList:
+        result = checkOneReviewP(entry)    #for every review, use the checkOneReview method to get the number of passive sentences in the review
+        finalNumPassive.append(result)    #store the results in finalNumPassive
+
+    #store the results in the NPV column
+    language['NPV'] = finalNumPassive
+
+    langList = language["Text"].apply(languagesToListA)
+
+    finalNumActive = []
+
+    for entry in langList:
+        result = checkOneReviewA(entry)    #for every review, use the checkOneReview method to get the number of active sentences in the review
+        finalNumActive.append(result)    #store the results in finalNumActive
+
+    #store the results in the NPV column
+    language['NAV'] = finalNumActive
+    language['NST'] = language['Text'].str.count('[\.!\?]')
+    language['TLN'] = language['Text'].str.len()
+
+    wordLists = language['Text'].apply(removePunctAndStopWords)
+    language['CDV']  = wordLists.apply(contentDiversity)
+    language = language.drop(['Text'], axis=1)
+
+
     print(f'The Text Received is {text} AND the model selected is {model}')
     if text:
         try:
@@ -102,16 +261,25 @@ def detect_language():
                 prediction = langIdModel.classify(df.iloc[0].Text)[0]
             elif model == FASTTXT:
                 prediction = fasttextModel.predict(text)[0][0].split('__')[-1]
-            elif model == SVM:
-                prediction = svmModel.predict(g)
-            elif model == RF:
-                prediction = RandomForestModel.predict(g)
+            elif model == SVMGV:
+                prediction = svmModelgv.predict(g)
+            elif model == RFGV:
+                prediction = RandomForestModelgv.predict(g)
             elif model == SPACY:
                 d = np.array([text])
                 prediction = spacyModel.predict(d)
                 print(f'Language is {prediction}')
-            elif model == KNN:
-                prediction = knnModel.predict(g)
+            elif model == KNNGV:
+                prediction = knnModelgv.predict(g)
+            elif model == KNNEXTRACT:
+                languageKnn = language.drop(['ASL','NPV','NST','TLN','CDV'], axis=1)
+                prediction = knnModelex.predict(languageKnn)
+            elif model == SVMEXTRACT:
+                languageSvm = language[['AWL','NVB','NAJ']]
+                prediction = svmModelex.predict(languageSvm)
+            elif model == RFEXTRACT:
+                languageRf = language[['AWL', 'NNO']]
+                prediction = RandomForestModelex.predict(languageRf)
             else:
                 prediction = "Model Not found"
 
